@@ -1,0 +1,47 @@
+
+.program	measure_pulses
+
+		; first returns 32-bit '0' word as a stream reset marker
+		; and waits for low to high edge
+		; then watches pulses on the input pins:
+			; after high to low edge return 0x80000000 - (high_pulse_length_in_cycles / 3) value
+			; after low to hight edge return previous_value - (low_pulse_length_in_cycles / 3) value
+		; in case of counter overflow (high or high + low level longer than 0x80000000 * 3 cycles) return to the beggining (return '0' word and wait for rising edge)
+
+		; there is constant error in measured length, but it should be less than 3 cycles, so less than one LSB of the output values
+
+overflow:
+		in null, 32		; reset / overflow indicator
+		set y, 1		; used to initialize the counter
+
+		; start with the next 0 to 1
+		wait 0 pin 0
+		wait 1 pin 0
+
+
+.wrap_target
+		mov x :: y 		; initialize counter to 0x80000000
+
+		; 3-cycle long loop while pin is high
+high:		
+		jmp x--, next1
+		jmp overflow
+next1:		
+		nop
+		jmp pin, high		; while pin is high
+
+		; end of 1
+		in x, 32		; push the counter value
+
+		; 3-cycle long loop while pin is low
+low:		
+		jmp x--, next2
+		jmp overflow
+next2:		
+		jmp pin, done		; pin has gone high: all done
+		jmp low
+
+done:		
+		in x, 32	; Auto push: SM stalls if FIFO full
+
+.wrap
