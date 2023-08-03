@@ -1,7 +1,3 @@
-//! This example shows how to use USB (Universal Serial Bus) in the RP2040 chip.
-//!
-//! This creates a USB serial port that echos.
-
 #![no_std]
 #![no_main]
 #![feature(type_alias_impl_trait)]
