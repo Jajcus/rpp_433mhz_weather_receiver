@@ -21,8 +21,7 @@ use crate::decoder::{DecoderInputChannel, DecoderOutputChannel, run_decoder};
 use static_cell::StaticCell;
 use embassy_executor::Executor;
 use embassy_futures::join::join3;
-use embassy_sync::pubsub::WaitResult;
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Timer, Instant};
 use embassy_rp::peripherals;
 
 use embassy_rp::gpio::{Level, Output, AnyPin};
@@ -124,10 +123,11 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
     signal_led.set_low();
     data_led.set_low();
 
-    let level_channel = radio::LevelChannel::new();
-    let mut l_sub = level_channel.subscriber().unwrap();
-    let pulse_channel = radio::PulseChannel::new();
-    let mut p_sub = pulse_channel.subscriber().unwrap();
+    let mut signal_led_on = false;
+    let mut data_led_off_after = Instant::MAX;
+
+    let msg_channel = radio::MessageChannel::new();
+    let msg_rx = msg_channel.receiver();
 
     let decoder_in_channel = DecoderInputChannel::new();
     let decoder_tx = decoder_in_channel.sender();
@@ -135,8 +135,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
     let decoder_rx = decoder_out_channel.receiver();
 
     let mut radio = Radio::new(pers.adc, pers.adc_pin, pers.pio, pers.data_pin,
-                               level_channel.publisher().unwrap(), pulse_channel.publisher().unwrap());
-
+                               msg_channel.sender());
 
     info!("Got it!");
 
@@ -161,9 +160,12 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
         use radio::PulseKind;
 
         loop {
+            let now = Instant::now();
             match decoder_rx.try_recv() {
                 Err(_) => (),
                 Ok(x) => {
+                    data_led.set_high();
+                    data_led_off_after = now + Duration::from_millis(250);
                     info!("Ch: {} Id: {} Temperature: {} Humidity: {}",
                           x.channel, x.id, x.temperature, x.humidity);
                     _ = write!(usb_writer, "Ch: {} Id: {} Temperature: {} Humidity: {}\r\n",
@@ -171,14 +173,26 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
                     _ = usb_writer.send_written().await;
                 }
             }
-            match l_sub.try_next_message() {
-                None => (),
-                Some(WaitResult::Lagged(x)) => { info!("Missed {} signal level messages", x); },
-                Some(WaitResult::Message(x)) => { info!("Signal level: {}", x); },
+            if now > data_led_off_after {
+                data_led.set_low();
+                data_led_off_after = Instant::MAX;
             }
-            match p_sub.next_message().await {
-                WaitResult::Lagged(x) => { debug!("Missed {} pulse messages", x); },
-                WaitResult::Message(pulse) => { 
+            match msg_rx.recv().await {
+                radio::Message::Level(l) => {
+                    debug!("Level: current: {}  avg second: {} minute: {} hour: {}",
+                          l.current, l.second_avg, l.minute_avg, l.hour_avg);
+                    if (l.current as f32) > 1.1 * l.minute_avg {
+                        if !signal_led_on {
+                            signal_led.set_high();
+                            signal_led_on = true;
+                        }
+                    }
+                    else if signal_led_on {
+                        signal_led.set_low();
+                        signal_led_on = false;
+                    }
+                },
+                radio::Message::Pulse(pulse) => {
                     match pulse.kind {
                         PulseKind::Reset => { debug!("Pulse stream reset!"); },
                         PulseKind::Low => { debug!("LOW for {} us", pulse.length); },
