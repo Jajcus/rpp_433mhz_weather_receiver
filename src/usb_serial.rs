@@ -102,9 +102,9 @@ impl<'d> UsbSerial<'d> {
 
         debug!("creating USB config");
 
-        let mut config = Config::new(0xc0de, 0xcafe);
+        let mut config = Config::new(0x1209, 0x001);
         config.manufacturer = Some("Jajcus");
-        config.product = Some("433Mhz Receiver");
+        config.product = Some("rpp_433mhz_weather_receiver");
         config.serial_number = Some("12345678");
         config.max_power = 100;
         config.max_packet_size_0 = 64;

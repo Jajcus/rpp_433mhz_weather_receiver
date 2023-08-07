@@ -2,12 +2,12 @@
 Description=Read weather data from an USB TTY and write it to MQTT
 Wants=mosquitto.service
 After=mosquitto.service docker.socket
-BindsTo=dev-serial-by\x2did-usb\x2dJajcus_433Mhz_Receiver_12345678\x2dif00.device
-After=dev-serial-by\x2did-usb\x2dJajcus_433Mhz_Receiver_12345678\x2dif00.device
+BindsTo=dev-serial-by\x2did-usb\x2dJajcus_rpp_433mhz_weather_receiver_12345678\x2dif00.device
+After=dev-serial-by\x2did-usb\x2dJajcus_rpp_433mhz_weather_receiver_12345678\x2dif00.device
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/docker run  --rm --name rpp_433mhz_weather2mqtt --volume /etc/2mqtt/config.yaml:/app/config.yaml --device /dev/serial/by-id/usb-Jajcus_433Mhz_Receiver_12345678-if00:/dev/serial/by-id/usb-Jajcus_433Mhz_Receiver_12345678-if00 --env TZ="Europe/Warsaw" --network host mycontroller/2mqtt:1.4
+ExecStart=/usr/bin/docker run  --rm --name rpp_433mhz_weather2mqtt --volume /etc/2mqtt/config.yaml:/app/config.yaml --device /dev/serial/by-id/usb-Jajcus_rpp_433mhz_weather_receiver_12345678-if00:/dev/serial/by-id/usb-Jajcus_rpp_433mhz_weather_receiver_12345678-if00 --env TZ="Europe/Warsaw" --network host mycontroller/2mqtt:1.4
 
 [Install]
-WantedBy=dev-serial-by\x2did-usb\x2dJajcus_433Mhz_Receiver_12345678\x2dif00.device
+WantedBy=dev-serial-by\x2did-usb\x2dJajcus_rpp_433mhz_weather_receiver_12345678\x2dif00.device

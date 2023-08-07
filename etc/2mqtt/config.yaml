@@ -10,7 +10,7 @@ adapters:
     provider: raw
     source:
       type: serial
-      port: /dev/serial/by-id/usb-Jajcus_433Mhz_Receiver_12345678-if00
+      port: /dev/serial/by-id/usb-Jajcus_rpp_433mhz_weather_receiver_12345678-if00
       baud_rate: 115200
     mqtt:
       broker: tcp://127.0.0.1:1883
