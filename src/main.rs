@@ -164,7 +164,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
                     data_led_off_after = now + Duration::from_millis(250);
                     info!("Ch: {} Id: {} Temperature: {} Humidity: {}",
                           x.channel, x.id, x.temperature, x.humidity);
-                    _ = write!(usb_writer, "Ch: {} Id: {} Temperature: {} Humidity: {}\r\n",
+                    _ = write!(usb_writer, "{{\"channel\": {}, \"id\": {}, \"temperature\": {}, \"humidity\": {}}}\n",
                                 x.channel, x.id, x.temperature, x.humidity);
                     _ = usb_writer.send_written().await;
                 }
