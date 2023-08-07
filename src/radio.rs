@@ -207,10 +207,10 @@ impl<'d> Radio<'d> {
 
         loop {
             let now = Instant::now();
-            if (now - last_report).as_secs() >= 1 {
-                debug!("Pulses received: {}, forwarded: {}. Resets: PIO: {}, shorts: {}, misses: {}, overruns: {}",
+            if (now - last_report).as_secs() >= 5 {
+                info!("Pulses received: {}, forwarded: {}. Resets: PIO: {}, shorts: {}, misses: {}, overruns: {}",
                       pulses_total, pulses_forwarded, pio_resets, shorts, misses, overruns);
-                debug!("Current streak: {}, longest streak: {}", current_streak, longest_streak);
+                info!("Current streak: {}, longest streak: {}", current_streak, longest_streak);
                 last_report = now;
             }
             let mut value = data_pio.sm0.rx().wait_pull().await;
