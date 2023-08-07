@@ -23,6 +23,8 @@ use embassy_rp::peripherals;
 use embassy_rp::gpio::{Level, Output, AnyPin};
 use embassy_rp::multicore::{spawn_core1, Stack};
 
+use core::fmt::Write;
+
 use {defmt_rtt as _, panic_probe as _};
 
 static mut CORE1_STACK: Stack<81920> = Stack::new();
@@ -46,9 +48,6 @@ struct Core0Peripherals {
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-
-    //cortex_m::asm::delay(125_000_000 * 5); // ~5 second
-    cortex_m::asm::delay(10);
 
     info!("starting");
     let periferials = embassy_rp::init(Default::default());
@@ -138,21 +137,6 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
     let decoder_fut = run_decoder(decoder_in_channel.receiver(), decoder_out_channel.sender());
 
     let my_fut = async {
-        info!("Writting 'abc'");
-        let _ = usb_writer.write(b"abc").await;
-        info!("Writting 'def'");
-        let _ = usb_writer.write(b"def").await;
-
-        use core::fmt::Write;
-        _ = write!(usb_writer, "btest");
-
-        _ = usb_writer.send_written().await;
-
-        //use crate::test_data::*;
-        //for pulse in PROLOGUE_TEST_STREAM {
-        //    decoder_tx.send(pulse).await;
-        //}
-
         use radio::PulseKind;
 
         loop {
