@@ -20,8 +20,8 @@ jobs:
         submodules: recursive
     - name: Prepare environment
       run: |
-        rustup target add thumbv6m-none-eabi
         rustup install nightly
+        rustup target add --toolchain nightly thumbv6m-none-eabi
         rustup override set nightly
     - name: Build
       run: cargo build --verbose
