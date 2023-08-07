@@ -1057,31 +1057,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 
 [[package]]
-name = "receiver_433"
-version = "0.1.0"
-dependencies = [
- "cortex-m",
- "cortex-m-rt",
- "defmt",
- "defmt-rtt",
- "embassy-embedded-hal",
- "embassy-executor",
- "embassy-futures",
- "embassy-net-driver",
- "embassy-rp",
- "embassy-sync",
- "embassy-time",
- "embassy-usb",
- "embedded-io",
- "fixed",
- "fixed-macro",
- "panic-probe",
- "pio",
- "pio-proc",
- "static_cell",
-]
-
-[[package]]
 name = "redox_syscall"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1162,6 +1137,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c92f344f63f950ee36cf4080050e4dce850839b9175da38f9d2ffb69b4dbb21"
 dependencies = [
  "crc-any",
+]
+
+[[package]]
+name = "rpp_433mhz_weather_receiver"
+version = "0.1.0"
+dependencies = [
+ "cortex-m",
+ "cortex-m-rt",
+ "defmt",
+ "defmt-rtt",
+ "embassy-embedded-hal",
+ "embassy-executor",
+ "embassy-futures",
+ "embassy-net-driver",
+ "embassy-rp",
+ "embassy-sync",
+ "embassy-time",
+ "embassy-usb",
+ "embedded-io",
+ "fixed",
+ "fixed-macro",
+ "panic-probe",
+ "pio",
+ "pio-proc",
+ "static_cell",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "receiver_433"
+name = "rpp_433mhz_weather_receiver"
 version = "0.1.0"
 
 [dependencies]
