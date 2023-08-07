@@ -1,0 +1,28 @@
+logger:
+  mode: development
+  encoding: console
+  level: debug
+
+adapters:
+  - name: adapter1
+    enabled: true
+    reconnect_delay: 20s
+    provider: raw
+    source:
+      type: serial
+      port: /dev/serial/by-id/usb-Jajcus_433Mhz_Receiver_12345678-if00
+      baud_rate: 115200
+    mqtt:
+      broker: tcp://127.0.0.1:1883
+      # insecure: true
+      # username: XXXXX
+      # password: YYYYY
+    formatter_script:
+      to_mqtt: |
+        const parsed = JSON.parse(raw_data);
+        const channel = parsed.channel;
+
+        result = {
+          mqtt_topic: "rpp_433_weather/" + channel + "/data",
+          data: JSON.stringify(parsed)
+        }
