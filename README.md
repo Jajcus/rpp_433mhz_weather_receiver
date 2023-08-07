@@ -18,7 +18,7 @@ It should be easy to modify the code to support most (if not any) devices suppor
 
 ## Hardware
 
-My device consists of [Raspberry Pi Pico][https://www.raspberrypi.com/products/raspberry-pi-pico/] and a cheap 433Mhz receiver module 'RXB6'. No other components are really required (even the antenna might be optional), but I have also added three LEDs with current limiting resistors and a decoupling capacitor (I am not sure it is needed, but it shouldn't hurt).
+My device consists of [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) and a cheap 433Mhz receiver module 'RXB6'. No other components are really required (even the antenna might be optional), but I have also added three LEDs with current limiting resistors and a decoupling capacitor (I am not sure it is needed, but it shouldn't hurt).
 
 '+5V' pin of RXB6 should be connected to +3.3V from Raspberry Pi Pico (**it must not be connected to +5V**, despite the label, or the Pi might get damaged).
 GND pins of Pi and RXB6 should be connected, of course. And the 'DATA' pin of RXB6 should be connected to any GPIO pin of Pi (code assumes GPIO #19 – pin 25).
@@ -42,7 +42,7 @@ The decoded data is then sent as JSON strings via USB using the CDC ACM class.
 
 ## Building and running
 
-# Building
+### Building
 
 Check out the codei and submodules:
 
@@ -67,7 +67,7 @@ It should be possible to compile the project now:
 cargo build
 ```
 
-# Flashing and running
+### Flashing and running
 
 You will need a [probe-rs](https://probe.rs/) compatible probe to program the Raspberry Pi Pico. The simplest way to get one is to use another Raspberry Pi Pico with [Picoprobe](https://github.com/raspberrypi/picoprobe) firmware with CMSIS support (recent versions).
 
