@@ -1,3 +1,6 @@
 *~
 target/
 log
+kicad/*backups
+kicad/*.bak
+kicad/*cache*/

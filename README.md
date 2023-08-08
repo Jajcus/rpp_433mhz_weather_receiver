@@ -18,6 +18,8 @@ It should be easy to modify the code to support most (if not any) devices suppor
 
 ## Hardware
 
+![hardware - inside view](images/hw_inside.jpg) ![hardware - outside view](images/hw_outside.jpg)
+
 My device consists of [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) and a cheap 433Mhz receiver module 'RXB6'. No other components are really required (even the antenna might be optional), but I have also added three LEDs with current limiting resistors and a decoupling capacitor (I am not sure it is needed, but it shouldn't hurt).
 
 '+5V' pin of RXB6 should be connected to +3.3V from Raspberry Pi Pico (**it must not be connected to +5V**, despite the label, or the Pi might get damaged).
@@ -31,6 +33,8 @@ The three LEDs are:
 * 'data' (green) – lights up when signal coding is recognized and data packet decoded – GPIO #10 (pin 14)
 
 All LEDS connected to ground with current-limiting resistors of 1kΩ.
+
+![schematic](images/schematic.svg)
 
 ## How it works
 
