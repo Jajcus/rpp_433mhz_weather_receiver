@@ -27,6 +27,8 @@ GND pins of Pi and RXB6 should be connected, of course. And the 'DATA' pin of RX
 
 For RSSI (signal level) monitoring the DER pin (available on newr RXB6 versions) is used. For this to work the RXB6 modules needs to be slightly modified – the 'R6' 0Ω resistor must be removed and moved to the 'R7' place (a wire or solder bridge may be used instead). Then the DER pin should be connected to and ADC pin of the Pi (code assumes ADC #0 – GPIO #26 – pin 31).
 
+The antenna is a straight wire 173mm long.
+
 The three LEDs are:
 * 'power' (red) – always on when the device is on and code running – GPIO #2 (pin 4)
 * 'signal' (yellow) – lights up when RSSI becomes larger than last minute average – GPIO #6 (pin 9)
