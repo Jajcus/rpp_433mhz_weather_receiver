@@ -27,6 +27,9 @@ use core::fmt::Write;
 
 use {defmt_rtt as _, panic_probe as _};
 
+
+const NEW_SENSOR_DELAY: Duration = Duration::from_secs(15 * 60);
+
 static mut CORE1_STACK: Stack<81920> = Stack::new();
 static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
 static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
@@ -92,7 +95,11 @@ fn main() -> ! {
     executor0.run(|spawner| unwrap!(spawner.spawn(core0_task(core0pers, &USB_PIPE))));
 }
 
-
+#[derive(Copy, Clone, Debug)]
+struct SensorInfo {
+    id: u32,
+    last_heard: Instant,
+}
 
 #[embassy_executor::task]
 async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'static>) {
@@ -139,6 +146,8 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
     let my_fut = async {
         use radio::PulseKind;
 
+        let mut known_sensors: [SensorInfo;3] = [SensorInfo {id: 0, last_heard: Instant::MIN };3];
+
         loop {
             let now = Instant::now();
             match decoder_rx.try_recv() {
@@ -146,8 +155,28 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
                 Ok(x) => {
                     data_led.set_high();
                     data_led_off_after = now + Duration::from_millis(250);
+
+                    if x.channel > 0 && x.channel < 4 {
+                        let k = &mut known_sensors[(x.channel - 1) as usize];
+                        if k.last_heard == Instant::MIN {
+                            info!("New sensor detected!");
+                        }
+                        else if k.id != x.id {
+                            if now - k.last_heard > NEW_SENSOR_DELAY {
+                                info!("Switching to a new sensor, long time no hear from the last one.");
+                            }
+                            else {
+                                info!("Unknown sensor (id: {}) heard for channel {}. Ignoring it (for now).", x.id, x.channel);
+                                continue;
+                            }
+                        }
+                        k.last_heard = now;
+                        k.id = x.id;
+                    }
+
                     info!("Ch: {} Id: {} Temperature: {} Humidity: {}",
                           x.channel, x.id, x.temperature, x.humidity);
+
                     _ = write!(usb_writer, "{{\"channel\": {}, \"id\": {}, \"temperature\": {}, \"humidity\": {}}}\n",
                                 x.channel, x.id, x.temperature, x.humidity);
                     _ = usb_writer.send_written().await;
