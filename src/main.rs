@@ -147,6 +147,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
         use radio::PulseKind;
 
         let mut known_sensors: [SensorInfo;3] = [SensorInfo {id: 0, last_heard: Instant::MIN };3];
+        let mut rssi: u16 = 0;
 
         loop {
             let now = Instant::now();
@@ -174,11 +175,11 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
                         k.id = x.id;
                     }
 
-                    info!("Ch: {} Id: {} Temperature: {} Humidity: {}",
-                          x.channel, x.id, x.temperature, x.humidity);
+                    info!("Ch: {} Id: {} Temperature: {} Humidity: {} RSSI: {}",
+                          x.channel, x.id, x.temperature, x.humidity, rssi);
 
-                    _ = write!(usb_writer, "{{\"channel\": {}, \"id\": {}, \"temperature\": {}, \"humidity\": {}}}\n",
-                                x.channel, x.id, x.temperature, x.humidity);
+                    _ = write!(usb_writer, "{{\"channel\": {}, \"id\": {}, \"temperature\": {}, \"humidity\": {}, \"rssi\": {}}}\n",
+                                x.channel, x.id, x.temperature, x.humidity, rssi);
                     _ = usb_writer.send_written().await;
                 }
             }
@@ -190,6 +191,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
                 radio::Message::Level(l) => {
                     debug!("Level: current: {}  avg second: {} minute: {} hour: {}",
                           l.current, l.second_avg, l.minute_avg, l.hour_avg);
+                    rssi = l.current;
                     if (l.current as f32) > 1.1 * l.minute_avg {
                         if !signal_led_on {
                             signal_led.set_high();
