@@ -20,14 +20,14 @@ It should be easy to modify the code to support most (if not any) devices suppor
 
 ![hardware - inside view](images/hw_inside.jpg) ![hardware - outside view](images/hw_outside.jpg)
 
-My device consists of [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) and a cheap 433Mhz receiver module 'RXB6'. No other components are really required (even the antenna might be optional), but I have also added three LEDs with current limiting resistors and a decoupling capacitor (I am not sure it is needed, but it shouldn't hurt).
+My device consists of [Raspberry Pi Pico](https://www.raspberrypi.com/products/raspberry-pi-pico/) and a cheap 433Mhz receiver module 'RXB6'. No other components, except the antenna, are really required, but I have also added three LEDs with current limiting resistors and a decoupling capacitor (I am not sure it is needed, but it shouldn't hurt).
 
 '+5V' pin of RXB6 should be connected to +3.3V from Raspberry Pi Pico (**it must not be connected to +5V**, despite the label, or the Pi might get damaged).
 GND pins of Pi and RXB6 should be connected, of course. And the 'DATA' pin of RXB6 should be connected to any GPIO pin of Pi (code assumes GPIO #19 – pin 25).
 
 For RSSI (signal level) monitoring the DER pin (available on newr RXB6 versions) is used. For this to work the RXB6 modules needs to be slightly modified – the 'R6' 0Ω resistor must be removed and moved to the 'R7' place (a wire or solder bridge may be used instead). Then the DER pin should be connected to and ADC pin of the Pi (code assumes ADC #0 – GPIO #26 – pin 31).
 
-The antenna is a straight wire 173mm long.
+The antenna is a straight wire 173mm long. Actually a slightly shorter one works even better for me (part of the circuit works as effective antenna length).
 
 The three LEDs are:
 * 'power' (red) – always on when the device is on and code running – GPIO #2 (pin 4)
