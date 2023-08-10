@@ -16,6 +16,8 @@ The code currently support only one specific communication protocol (called 'Pro
 
 It should be easy to modify the code to support most (if not any) devices supported by [rtl_422](https://github.com/merbanan/rtl_433/blob/master/src/devices/prologue.c).
 
+Also, the cheap receiver hardware used is not very good, so reception range is quite bad.
+
 ## Hardware
 
 ![hardware - inside view](images/hw_inside.jpg) ![hardware - outside view](images/hw_outside.jpg)
