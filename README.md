@@ -94,6 +94,36 @@ cargo run
 The device should be flashed, restarted and debug output will be displayed.
 If the device fails to start after subsequent flashing it might be because of https://github.com/embassy-rs/embassy/issues/1736 Power cycling should help (eventually).
 
-## Feeding data to MQTT
+## Receiving data
 
-TODO
+The device sends received data as JSON lines over serial over USB. In Linux they can be read from a /dev/ttyACM0 (or whatever the kernel assigns it), like this:
+
+```bash
+cat /dev/ttyACM0
+
+```
+
+Which will result is output like this:
+```json
+{"channel": 2, "id": 48, "temperature": 22.6, "humidity": 54, "rssi": 1024}
+{"channel": 1, "id": 155, "temperature": 22.3, "humidity": 54, "rssi": 1081}
+{"channel": 2, "id": 48, "temperature": 22.6, "humidity": 54, "rssi": 1021}
+{"channel": 1, "id": 155, "temperature": 22.3, "humidity": 54, "rssi": 1079}
+{"channel": 2, "id": 48, "temperature": 22.6, "humidity": 54, "rssi": 1026}
+{"channel": 1, "id": 155, "temperature": 22.3, "humidity": 54, "rssi": 1083}
+{"channel": 2, "id": 48, "temperature": 22.6, "humidity": 54, "rssi": 1025}
+```
+
+## Feeding data to MQTT for Home Assistant
+
+Home Assistant cannot use that output directly (as far as I know) and easiest
+way to make it usable to Home Assistant is to publish it to MQTT.
+
+There are various solutions for converting serial transmition into MQTT. I have
+chosen [2mqtt](https://github.com/mycontroller-org/2mqtt) which can be easily
+configured to handle such JSON strings.
+
+See the configuration example in the ``etc/`` directory –
+``etc/2mqtt/config.yaml`` configuration file for 2mqtt and
+``etc/systemd/rpp_433mhz_weather2mqtt.service`` systemd unit file to start the
+2qmtt container bound to the serial device.
