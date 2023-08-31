@@ -211,6 +211,7 @@ impl<'d> Radio<'d> {
                 info!("Pulses received: {}, forwarded: {}. Resets: PIO: {}, shorts: {}, misses: {}, overruns: {}",
                       pulses_total, pulses_forwarded, pio_resets, shorts, misses, overruns);
                 info!("Current streak: {}, longest streak: {}", current_streak, longest_streak);
+                info!("Last_sent: {}, pending:{}, need_reset: {}", last_sent, pending_pulse, need_reset);
                 last_report = now;
             }
             let mut value = data_pio.sm0.rx().wait_pull().await;
@@ -298,7 +299,11 @@ impl<'d> Radio<'d> {
                 else if pulse.kind != PulseKind::Reset {
                     panic!("Unexpected pulse kind");
                 }
-                else if last_sent.kind != pulse.kind { // no point in sending stream of resets
+                else if last_sent.kind == pulse.kind {
+                    // no point in sending stream of resets
+                    need_reset = false;
+                }
+                else {
                     match sender.try_send(Message::Pulse(pulse)) {
                         Ok(_) => {
                             last_sent = pulse;
