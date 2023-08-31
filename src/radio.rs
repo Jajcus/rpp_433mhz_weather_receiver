@@ -1,5 +1,5 @@
 
-use defmt::{info, debug};
+use defmt::{info, debug, Format};
 
 use embassy_rp::adc;
 use embassy_rp::adc::AdcPin;
@@ -24,14 +24,14 @@ bind_interrupts!(struct Irqs {
 
 const MIN_PULSE_LENGTH : u32 = 50;
 
-#[derive(Copy, Clone,Debug, PartialEq, Eq)]
+#[derive(Copy, Clone,Debug, PartialEq, Eq, Format)]
 pub enum PulseKind {
     Reset,
     Low,
     High
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Format)]
 pub struct Pulse {
     pub kind: PulseKind,
     pub length: u32,
