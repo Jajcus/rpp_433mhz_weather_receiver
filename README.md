@@ -72,8 +72,10 @@ rustup override set nightly
 
 It should be possible to compile the project now:
 ```bash
-cargo build
+cargo build --release
 ```
+
+Note: use ``--release``, as a debug build might be too slow to keep up with some noise pulses which makes it unreliable.
 
 ### Flashing and running
 
@@ -88,7 +90,7 @@ cargo install probe-run
 Connect the probe to the target device (SWD connector is enough – +5V can be provided via USB and serial console is not used) and run:
 
 ```bash
-cargo run
+cargo run --release
 ```
 
 The device should be flashed, restarted and debug output will be displayed.
