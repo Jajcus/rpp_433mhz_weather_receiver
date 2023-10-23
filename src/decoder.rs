@@ -27,10 +27,10 @@ pub struct DecodedData {
 
 async fn decode_bit<'a>(input: &'a DecoderInputRx<'a>) -> Result<bool, ()> {
 
-    let pulse1 = input.recv().await;
+    let pulse1 = input.receive().await;
     if pulse1.kind != PulseKind::High || pulse1.length < 500 || pulse1.length > 600 { return Err(()); }
 
-    let pulse2 = input.recv().await;
+    let pulse2 = input.receive().await;
 
     if pulse2.kind != PulseKind::Low { return Err(()); }
 
@@ -65,7 +65,7 @@ pub async fn run_decoder<'a>(input: DecoderInputRx<'a>, output: DecoderOutputTx<
             got_packets = 0;
         }
         loop {
-            let pulse = input.recv().await;
+            let pulse = input.receive().await;
 
             // wait for the 9000ms low pulse
             if pulse.kind != PulseKind::Low || pulse.length < 9000 || pulse.length > 9500 {

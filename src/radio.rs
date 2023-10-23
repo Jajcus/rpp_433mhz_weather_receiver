@@ -76,7 +76,7 @@ struct LvlAverages {
 
 pub struct Radio<'d, > {
     rssi_adc: adc::Adc<'d, adc::Async>,
-    rssi_adc_pin: adc::Pin<'d>,
+    rssi_adc_ch: adc::Channel<'d>,
     data_pio: pio::Pio<'d, PIO0>,
     msg_sender: MessageSender<'d>,
 
@@ -91,7 +91,7 @@ impl<'d> Radio<'d> {
                data_pin: impl pio::PioPin + 'd,
                msg_sender: MessageSender<'d>) -> Self {
         let rssi_adc = adc::Adc::new(adc_per, Irqs, adc::Config::default());
-        let rssi_adc_pin = adc::Pin::new(adc_pin, gpio::Pull::None);
+        let rssi_adc_ch = adc::Channel::new_pin(adc_pin, gpio::Pull::None);
 
         let mut data_pio = pio::Pio::new(pio_per, Irqs);
         let in_pin = data_pio.common.make_pio_pin(data_pin);
@@ -107,7 +107,7 @@ impl<'d> Radio<'d> {
         data_pio.sm0.set_config(&cfg);
         Radio {
             rssi_adc,
-            rssi_adc_pin,
+            rssi_adc_ch,
             data_pio,
             msg_sender,
 
@@ -130,7 +130,7 @@ impl<'d> Radio<'d> {
         }
     }
     async fn monitor_level<'a>(sender: MessageSender<'a>, avgs: &mut LvlAverages,
-                               rssi_adc: &mut adc::Adc<'d, adc::Async>, adc_pin: &mut adc::Pin<'d>) {
+                               rssi_adc: &mut adc::Adc<'d, adc::Async>, adc_pin: &mut adc::Channel<'a>) {
         let mut last_second = Instant::MIN;
         let mut last_minute = Instant::MIN;
         let mut level;
@@ -327,7 +327,7 @@ impl<'d> Radio<'d> {
     pub async fn run(&mut self) {
 
         let level_fut = Self::monitor_level(self.msg_sender.clone(), &mut self.lvl_averages,
-                                           &mut self.rssi_adc, &mut self.rssi_adc_pin);
+                                           &mut self.rssi_adc, &mut self.rssi_adc_ch);
         let pulses_fut = Self::read_pulses(self.msg_sender.clone(),
                                             &mut self.data_pio);
 

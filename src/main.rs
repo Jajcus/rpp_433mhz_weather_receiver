@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 #![feature(type_alias_impl_trait)]
-#![feature(impl_trait_projections)]
 
 pub mod usb_serial;
 pub mod radio;
@@ -10,7 +9,7 @@ pub mod decoder;
 
 use defmt::{info,debug,unwrap};
 
-use crate::usb_serial::{UsbSerial, UsbSerialPipe, UsbSerialWriter};
+use crate::usb_serial::{UsbSerial, UsbSerialPipe, UsbSerialWriter, UsbSerialPipeReader};
 use crate::radio::Radio;
 use crate::decoder::{DecoderInputChannel, DecoderOutputChannel, run_decoder};
 
@@ -33,6 +32,7 @@ const NEW_SENSOR_DELAY: Duration = Duration::from_secs(15 * 60);
 static mut CORE1_STACK: Stack<81920> = Stack::new();
 static EXECUTOR0: StaticCell<Executor> = StaticCell::new();
 static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
+static USB_PIPE: StaticCell<UsbSerialPipe> = StaticCell::new();
 
 struct Core1Peripherals {
     pico_led: AnyPin,
@@ -83,8 +83,9 @@ fn main() -> ! {
         usb: usb_per,
     };
 
-    static USB_PIPE: UsbSerialPipe = UsbSerialPipe::new();
-    let usb_writer = UsbSerialWriter::new(&USB_PIPE);
+    let pipe = USB_PIPE.init(UsbSerialPipe::new());
+    let (reader, writer) = pipe.split();
+    let usb_writer = UsbSerialWriter::new(writer);
 
     spawn_core1(periferials.CORE1, unsafe { &mut CORE1_STACK }, move || {
         let executor1 = EXECUTOR1.init(Executor::new());
@@ -92,7 +93,7 @@ fn main() -> ! {
     });
 
     let executor0 = EXECUTOR0.init(Executor::new());
-    executor0.run(|spawner| unwrap!(spawner.spawn(core0_task(core0pers, &USB_PIPE))));
+    executor0.run(|spawner| unwrap!(spawner.spawn(core0_task(core0pers, reader))));
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -102,7 +103,7 @@ struct SensorInfo {
 }
 
 #[embassy_executor::task]
-async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'static>) {
+async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
     
     info!("Core 1 running");
 
@@ -151,7 +152,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
 
         loop {
             let now = Instant::now();
-            match decoder_rx.try_recv() {
+            match decoder_rx.try_receive() {
                 Err(_) => (),
                 Ok(x) => {
                     data_led.set_high();
@@ -187,7 +188,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
                 data_led.set_low();
                 data_led_off_after = Instant::MAX;
             }
-            match msg_rx.recv().await {
+            match msg_rx.receive().await {
                 radio::Message::Level(l) => {
                     debug!("Level: current: {}  avg second: {} minute: {} hour: {}",
                           l.current, l.second_avg, l.minute_avg, l.hour_avg);
@@ -223,11 +224,11 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter<'sta
 }
 
 #[embassy_executor::task]
-async fn core0_task(pers: Core0Peripherals, usb_pipe: &'static UsbSerialPipe) -> ! {
+async fn core0_task(pers: Core0Peripherals, usb_pipe_reader: UsbSerialPipeReader) -> ! {
 
     info!("Core 0 running");
     
-    let mut usb_serial = UsbSerial::new(pers.usb, usb_pipe);
+    let mut usb_serial = UsbSerial::new(pers.usb, usb_pipe_reader);
     
     info!("usb_serial created, running it");
 

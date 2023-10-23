@@ -18,12 +18,14 @@ bind_interrupts!(struct Irqs {
 });
 
 pub type UsbSerialPipe = Pipe<CriticalSectionRawMutex, 256>;
+pub type UsbSerialPipeReader = embassy_sync::pipe::Reader<'static, CriticalSectionRawMutex, 256>;
+pub type UsbSerialPipeWriter = embassy_sync::pipe::Writer<'static, CriticalSectionRawMutex, 256>;
 
 pub struct UsbSerial<'d> {
     usb: UsbDevice<'d, Driver<'d, USB>>,
     class_sender: Sender<'d, Driver<'d, USB>>,
     class_receiver: Receiver<'d, Driver<'d, USB>>,
-    pipe: &'static UsbSerialPipe,
+    pipe_reader: UsbSerialPipeReader,
 }
 
 static mut DEVICE_DESCRIPTOR: [u8;256] = [0; 256];
@@ -37,15 +39,14 @@ pub const WRITE_BUFFER_SIZE: usize = 256;
 
 
 #[derive(Clone)]
-pub struct UsbSerialWriter<'a> {
-    pipe_writer: embassy_sync::pipe::Writer<'a, CriticalSectionRawMutex, 256>,
+pub struct UsbSerialWriter {
+    pipe_writer: UsbSerialPipeWriter,
     buf: [u8; WRITE_BUFFER_SIZE],
     written: usize,
 }
 
-impl<'a> UsbSerialWriter<'a> {
-    pub fn new(pipe: &'a UsbSerialPipe) -> UsbSerialWriter<'a> {
-        let pipe_writer = pipe.writer().clone();
+impl UsbSerialWriter {
+    pub fn new(pipe_writer: UsbSerialPipeWriter) -> UsbSerialWriter {
         UsbSerialWriter {
             pipe_writer,
             buf: [0; WRITE_BUFFER_SIZE],
@@ -53,10 +54,8 @@ impl<'a> UsbSerialWriter<'a> {
         }
     }
     pub async fn write(&mut self, bytes: &[u8]) -> Result<(), ()> {
-        match embedded_io::asynch::Write::write(&mut self.pipe_writer, bytes).await {
-            Ok(_) => Ok(()),
-            Err(_) => Err(()),
-        }
+        self.pipe_writer.write(bytes).await;
+        Ok(())
     }
     pub async fn send_written(&mut self) -> Result<(), ()> {
         let mut num_bytes: usize;
@@ -79,7 +78,7 @@ impl<'a> UsbSerialWriter<'a> {
     }
 }
 
-impl<'a> fmt::Write for UsbSerialWriter<'a> {
+impl<'a> fmt::Write for UsbSerialWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let bytes = s.as_bytes();
 
@@ -95,7 +94,7 @@ impl<'a> fmt::Write for UsbSerialWriter<'a> {
 }
 
 impl<'d> UsbSerial<'d> {
-    pub fn new(usb_p: impl Peripheral<P = USB> + 'd + 'static, pipe: &'static UsbSerialPipe) -> UsbSerial<'static> {
+    pub fn new(usb_p: impl Peripheral<P = USB> + 'd + 'static, pipe_reader: UsbSerialPipeReader) -> UsbSerial<'static> {
 
         debug!("creating USB driver");
         let driver = Driver::new(usb_p, Irqs);
@@ -159,12 +158,11 @@ impl<'d> UsbSerial<'d> {
             usb,
             class_sender,
             class_receiver,
-            pipe,
+            pipe_reader,
             }
     }
     pub async fn run(&mut self) {
         debug!("UsbSerial.run()");
-        let mut pipe_reader = self.pipe.reader().clone();
         let usb_fut = self.usb.run();
 
         let read_fut = async {
@@ -191,7 +189,7 @@ impl<'d> UsbSerial<'d> {
                 self.class_sender.wait_connection().await;
                 debug!("Connected (send)");
                 loop {
-                    let number = embedded_io::asynch::Read::read(&mut pipe_reader, &mut buf).await.unwrap();
+                    let number = self.pipe_reader.read(&mut buf).await;
                     debug!("Got {} bytes", number);
                     match self.class_sender.write_packet(&buf[0..number]).await {
                         Ok(()) => debug!("sent!"),
