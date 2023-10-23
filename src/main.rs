@@ -2,30 +2,29 @@
 #![no_main]
 #![feature(type_alias_impl_trait)]
 
-pub mod usb_serial;
+pub mod decoder;
 pub mod radio;
 pub mod test_data;
-pub mod decoder;
+pub mod usb_serial;
 
-use defmt::{info,debug,unwrap};
+use defmt::{debug, info, unwrap};
 
-use crate::usb_serial::{UsbSerial, UsbSerialPipe, UsbSerialWriter, UsbSerialPipeReader};
+use crate::decoder::{run_decoder, DecoderInputChannel, DecoderOutputChannel};
 use crate::radio::Radio;
-use crate::decoder::{DecoderInputChannel, DecoderOutputChannel, run_decoder};
+use crate::usb_serial::{UsbSerial, UsbSerialPipe, UsbSerialPipeReader, UsbSerialWriter};
 
-use static_cell::StaticCell;
 use embassy_executor::Executor;
 use embassy_futures::join::join3;
-use embassy_time::{Duration, Timer, Instant};
 use embassy_rp::peripherals;
+use embassy_time::{Duration, Instant, Timer};
+use static_cell::StaticCell;
 
-use embassy_rp::gpio::{Level, Output, AnyPin};
+use embassy_rp::gpio::{AnyPin, Level, Output};
 use embassy_rp::multicore::{spawn_core1, Stack};
 
 use core::fmt::Write;
 
 use {defmt_rtt as _, panic_probe as _};
-
 
 const NEW_SENSOR_DELAY: Duration = Duration::from_secs(15 * 60);
 
@@ -51,7 +50,6 @@ struct Core0Peripherals {
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
-
     info!("starting");
     let periferials = embassy_rp::init(Default::default());
 
@@ -64,7 +62,7 @@ fn main() -> ! {
     let adc = periferials.ADC;
     let adc_pin = periferials.PIN_26;
     let pio = periferials.PIO0;
-    let data_pin =  periferials.PIN_19;
+    let data_pin = periferials.PIN_19;
 
     let core1pers = Core1Peripherals {
         pico_led,
@@ -79,9 +77,7 @@ fn main() -> ! {
 
     let usb_per = periferials.USB;
 
-    let core0pers = Core0Peripherals {
-        usb: usb_per,
-    };
+    let core0pers = Core0Peripherals { usb: usb_per };
 
     let pipe = USB_PIPE.init(UsbSerialPipe::new());
     let (reader, writer) = pipe.split();
@@ -104,7 +100,6 @@ struct SensorInfo {
 
 #[embassy_executor::task]
 async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
-    
     info!("Core 1 running");
 
     let mut pico_led = Output::new(pers.pico_led, Level::Low);
@@ -137,8 +132,13 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
     let decoder_out_channel = DecoderOutputChannel::new();
     let decoder_rx = decoder_out_channel.receiver();
 
-    let mut radio = Radio::new(pers.adc, pers.adc_pin, pers.pio, pers.data_pin,
-                               msg_channel.sender());
+    let mut radio = Radio::new(
+        pers.adc,
+        pers.adc_pin,
+        pers.pio,
+        pers.data_pin,
+        msg_channel.sender(),
+    );
 
     info!("Got it!");
 
@@ -147,7 +147,10 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
     let my_fut = async {
         use radio::PulseKind;
 
-        let mut known_sensors: [SensorInfo;3] = [SensorInfo {id: 0, last_heard: Instant::MIN };3];
+        let mut known_sensors: [SensorInfo; 3] = [SensorInfo {
+            id: 0,
+            last_heard: Instant::MIN,
+        }; 3];
         let mut rssi: u16 = 0;
 
         loop {
@@ -162,12 +165,10 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
                         let k = &mut known_sensors[(x.channel - 1) as usize];
                         if k.last_heard == Instant::MIN {
                             info!("New sensor detected!");
-                        }
-                        else if k.id != x.id {
+                        } else if k.id != x.id {
                             if now - k.last_heard > NEW_SENSOR_DELAY {
                                 info!("Switching to a new sensor, long time no hear from the last one.");
-                            }
-                            else {
+                            } else {
                                 info!("Unknown sensor (id: {}) heard for channel {}. Ignoring it (for now).", x.id, x.channel);
                                 continue;
                             }
@@ -176,8 +177,10 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
                         k.id = x.id;
                     }
 
-                    info!("Ch: {} Id: {} Temperature: {} Humidity: {} RSSI: {}",
-                          x.channel, x.id, x.temperature, x.humidity, rssi);
+                    info!(
+                        "Ch: {} Id: {} Temperature: {} Humidity: {} RSSI: {}",
+                        x.channel, x.id, x.temperature, x.humidity, rssi
+                    );
 
                     _ = writeln!(usb_writer, "{{\"channel\": {}, \"id\": {}, \"temperature\": {}, \"humidity\": {}, \"rssi\": {}}}",
                                 x.channel, x.id, x.temperature, x.humidity, rssi);
@@ -190,28 +193,35 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
             }
             match msg_rx.receive().await {
                 radio::Message::Level(l) => {
-                    debug!("Level: current: {}  avg second: {} minute: {} hour: {}",
-                          l.current, l.second_avg, l.minute_avg, l.hour_avg);
+                    debug!(
+                        "Level: current: {}  avg second: {} minute: {} hour: {}",
+                        l.current, l.second_avg, l.minute_avg, l.hour_avg
+                    );
                     rssi = l.current;
                     if (l.current as f32) > 1.1 * l.minute_avg {
                         if !signal_led_on {
                             signal_led.set_high();
                             signal_led_on = true;
                         }
-                    }
-                    else if signal_led_on {
+                    } else if signal_led_on {
                         signal_led.set_low();
                         signal_led_on = false;
                     }
-                },
+                }
                 radio::Message::Pulse(pulse) => {
                     match pulse.kind {
-                        PulseKind::Reset => { debug!("Pulse stream reset!"); },
-                        PulseKind::Low => { debug!("LOW for {} us", pulse.length); },
-                        PulseKind::High => { debug!("HIGH for {} us", pulse.length); },
+                        PulseKind::Reset => {
+                            debug!("Pulse stream reset!");
+                        }
+                        PulseKind::Low => {
+                            debug!("LOW for {} us", pulse.length);
+                        }
+                        PulseKind::High => {
+                            debug!("HIGH for {} us", pulse.length);
+                        }
                     }
                     decoder_tx.send(pulse).await;
-                },
+                }
             }
         }
     };
@@ -225,11 +235,10 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
 
 #[embassy_executor::task]
 async fn core0_task(pers: Core0Peripherals, usb_pipe_reader: UsbSerialPipeReader) -> ! {
-
     info!("Core 0 running");
-    
+
     let mut usb_serial = UsbSerial::new(pers.usb, usb_pipe_reader);
-    
+
     info!("usb_serial created, running it");
 
     usb_serial.run().await;

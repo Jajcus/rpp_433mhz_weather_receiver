@@ -1,17 +1,16 @@
-
 use embassy_futures::join::join3;
 use embassy_rp::bind_interrupts;
 use embassy_rp::peripherals::USB;
-use embassy_usb::driver::EndpointError;
 use embassy_rp::usb::{Driver, InterruptHandler};
-use embassy_usb::class::cdc_acm::{CdcAcmClass, State, Sender, Receiver};
-use embassy_usb::{Builder, Config, UsbDevice};
 use embassy_rp::Peripheral;
-use embassy_sync::pipe::{Pipe, TryWriteError};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::pipe::{Pipe, TryWriteError};
+use embassy_usb::class::cdc_acm::{CdcAcmClass, Receiver, Sender, State};
+use embassy_usb::driver::EndpointError;
+use embassy_usb::{Builder, Config, UsbDevice};
 
-use defmt::{info, debug};
 use core::fmt;
+use defmt::{debug, info};
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => InterruptHandler<USB>;
@@ -28,15 +27,13 @@ pub struct UsbSerial<'d> {
     pipe_reader: UsbSerialPipeReader,
 }
 
-static mut DEVICE_DESCRIPTOR: [u8;256] = [0; 256];
-static mut CONFIG_DESCRIPTOR: [u8;256] = [0; 256];
-static mut BOS_DESCRIPTOR: [u8;256] = [0; 256];
-static mut CONTROL_BUF: [u8;64] = [0; 64];
-static mut STATE : Option<State> = None;
-
+static mut DEVICE_DESCRIPTOR: [u8; 256] = [0; 256];
+static mut CONFIG_DESCRIPTOR: [u8; 256] = [0; 256];
+static mut BOS_DESCRIPTOR: [u8; 256] = [0; 256];
+static mut CONTROL_BUF: [u8; 64] = [0; 64];
+static mut STATE: Option<State> = None;
 
 pub const WRITE_BUFFER_SIZE: usize = 256;
-
 
 #[derive(Clone)]
 pub struct UsbSerialWriter {
@@ -71,7 +68,7 @@ impl UsbSerialWriter {
                 Err(TryWriteError::Full) => {
                     debug!("USB pipe full!");
                     return Err(());
-                },
+                }
             }
         }
         Ok(())
@@ -94,8 +91,10 @@ impl fmt::Write for UsbSerialWriter {
 }
 
 impl<'d> UsbSerial<'d> {
-    pub fn new(usb_p: impl Peripheral<P = USB> + 'd + 'static, pipe_reader: UsbSerialPipeReader) -> UsbSerial<'static> {
-
+    pub fn new(
+        usb_p: impl Peripheral<P = USB> + 'd + 'static,
+        pipe_reader: UsbSerialPipeReader,
+    ) -> UsbSerial<'static> {
         debug!("creating USB driver");
         let driver = Driver::new(usb_p, Irqs);
 
@@ -133,7 +132,7 @@ impl<'d> UsbSerial<'d> {
             device_descriptor,
             config_descriptor,
             bos_descriptor,
-            control_buf
+            control_buf,
         );
 
         // Create classes on the builder.
@@ -142,7 +141,6 @@ impl<'d> UsbSerial<'d> {
             STATE = Some(State::new());
             state_r = STATE.as_mut().unwrap();
         }
-
 
         debug!("creating USB class");
         let class = CdcAcmClass::new(&mut builder, state_r, 64);
@@ -159,7 +157,7 @@ impl<'d> UsbSerial<'d> {
             class_sender,
             class_receiver,
             pipe_reader,
-            }
+        }
     }
     pub async fn run(&mut self) {
         debug!("UsbSerial.run()");
@@ -167,7 +165,7 @@ impl<'d> UsbSerial<'d> {
 
         let read_fut = async {
             debug!(" read_fut()");
-            let mut buf: [u8;64] = [0;64];
+            let mut buf: [u8; 64] = [0; 64];
             loop {
                 self.class_receiver.wait_connection().await;
                 debug!("Connected (recv)");
@@ -184,7 +182,7 @@ impl<'d> UsbSerial<'d> {
 
         let write_fut = async {
             debug!(" write_fut()");
-            let mut buf: [u8;64] = [0;64];
+            let mut buf: [u8; 64] = [0; 64];
             loop {
                 self.class_sender.wait_connection().await;
                 debug!("Connected (send)");
