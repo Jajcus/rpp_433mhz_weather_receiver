@@ -72,12 +72,10 @@ pub async fn run_decoder<'a>(input: DecoderInputRx<'a>, output: DecoderOutputTx<
                 continue;
             }
 
-            let packet: [u8;5];
-
-            match decode_bits::<5, 36>(&input).await {
+            let packet: [u8;5] = match decode_bits::<5, 36>(&input).await {
                 Err(_) => { debug!("decode bits error"); continue 'main; },
-                Ok(p) => packet = p,
-            }
+                Ok(p) => p,
+            };
 
             let type_v = packet[0] >> 4;
             if type_v != 9 && type_v != 5 {

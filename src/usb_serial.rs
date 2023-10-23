@@ -78,7 +78,7 @@ impl UsbSerialWriter {
     }
 }
 
-impl<'a> fmt::Write for UsbSerialWriter {
+impl fmt::Write for UsbSerialWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let bytes = s.as_bytes();
 

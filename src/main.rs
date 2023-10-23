@@ -179,7 +179,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
                     info!("Ch: {} Id: {} Temperature: {} Humidity: {} RSSI: {}",
                           x.channel, x.id, x.temperature, x.humidity, rssi);
 
-                    _ = write!(usb_writer, "{{\"channel\": {}, \"id\": {}, \"temperature\": {}, \"humidity\": {}, \"rssi\": {}}}\n",
+                    _ = writeln!(usb_writer, "{{\"channel\": {}, \"id\": {}, \"temperature\": {}, \"humidity\": {}, \"rssi\": {}}}",
                                 x.channel, x.id, x.temperature, x.humidity, rssi);
                     _ = usb_writer.send_written().await;
                 }
@@ -220,7 +220,7 @@ async fn core1_task(pers: Core1Peripherals, mut usb_writer: UsbSerialWriter) {
     // If we had made everything `'static` above instead, we could do this using separate tasks instead.
     join3(radio.run(), decoder_fut, my_fut).await;
 
-    loop {};
+    panic!("Unreachable code reached (core 1)!");
 }
 
 #[embassy_executor::task]
@@ -233,5 +233,6 @@ async fn core0_task(pers: Core0Peripherals, usb_pipe_reader: UsbSerialPipeReader
     info!("usb_serial created, running it");
 
     usb_serial.run().await;
-    loop {};
+
+    panic!("Unreachable code reached (core 0)!");
 }

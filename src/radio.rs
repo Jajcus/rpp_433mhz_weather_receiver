@@ -225,32 +225,30 @@ impl<'d> Radio<'d> {
                 else if need_reset {
                     pulse = PULSE_RESET;
                 }
+                else if prev_kind == PulseKind::Low {
+                    pulse = Pulse {
+                        kind: PulseKind::High,
+                        length: 0x80000000 - value,
+                    };
+                    prev_kind = PulseKind::High;
+                }
+                else if value <= prev_value {
+                    // value for low pulse should always be lower than previous value...
+                    pulse = Pulse {
+                        kind: PulseKind::Low,
+                        length: prev_value - value,
+                    };
+                    prev_kind = PulseKind::Low;
+                }
                 else {
-                    if prev_kind == PulseKind::Low {
-                        pulse = Pulse {
-                            kind: PulseKind::High,
-                            length: 0x80000000 - value,
-                        };
-                        prev_kind = PulseKind::High;
-                    }
-                    else if value <= prev_value {
-                        // value for low pulse should always be lower than previous value...
-                        pulse = Pulse {
-                            kind: PulseKind::Low,
-                            length: prev_value - value,
-                        };
-                        prev_kind = PulseKind::Low;
-                    }
-                    else {
-                        // ...otherwise some edge must have been missed
-                        info!("value = {} after {} when low pulse expected", value, prev_value); 
-                        pulse = PULSE_RESET;
-                        misses += 1;
-                        prev_kind = PulseKind::Low;
-                        unsafe {
-                            // restart the program
-                            data_pio.sm0.exec_instr(0);
-                        }
+                    // ...otherwise some edge must have been missed
+                    info!("value = {} after {} when low pulse expected", value, prev_value);
+                    pulse = PULSE_RESET;
+                    misses += 1;
+                    prev_kind = PulseKind::Low;
+                    unsafe {
+                        // restart the program
+                        data_pio.sm0.exec_instr(0);
                     }
                 }
                 prev_value = value;
@@ -326,9 +324,9 @@ impl<'d> Radio<'d> {
 
     pub async fn run(&mut self) {
 
-        let level_fut = Self::monitor_level(self.msg_sender.clone(), &mut self.lvl_averages,
+        let level_fut = Self::monitor_level(self.msg_sender, &mut self.lvl_averages,
                                            &mut self.rssi_adc, &mut self.rssi_adc_ch);
-        let pulses_fut = Self::read_pulses(self.msg_sender.clone(),
+        let pulses_fut = Self::read_pulses(self.msg_sender,
                                             &mut self.data_pio);
 
         join(level_fut, pulses_fut).await;
